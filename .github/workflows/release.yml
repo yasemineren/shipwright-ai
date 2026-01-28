@@ -1,0 +1,47 @@
+name: Build & Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.0, v1.0.0 gibi tag'ler gelince çalışır
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Build React Admin Panel
+      run: |
+        cd shipwright-core/admin
+        npm ci
+        npm run build
+        rm -rf node_modules # Gereksiz dosyaları temizle
+
+    - name: Prepare Plugin ZIP
+      run: |
+        # Geçici bir klasör oluştur ve dosyaları oraya taşı (Temiz yapı için)
+        mkdir build_temp
+        cp -r shipwright-core build_temp/shipwright-ai
+        
+        # Gereksiz geliştirme dosyalarını sil
+        cd build_temp/shipwright-ai
+        rm -rf admin/src admin/tsconfig.json admin/vite.config.ts admin/tailwind.config.js
+        cd ..
+        
+        # Zip oluştur
+        zip -r shipwright-ai.zip shipwright-ai
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build_temp/shipwright-ai.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
