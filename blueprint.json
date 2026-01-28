@@ -16,6 +16,10 @@
                 "resource": "url",
                 "url": "https://github.com/yasemineren/shipwright-ai/releases/latest/download/shipwright-ai.zip"
             }
+        },
+        {
+            "step": "activatePlugin",
+            "pluginPath": "shipwright-ai/shipwright-ai.php"
         }
     ]
 }
