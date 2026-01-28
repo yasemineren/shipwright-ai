@@ -1,9 +1,12 @@
 {
-    "landingPage": "/wp-admin/plugins.php",
+    "landingPage": "/wp-admin/admin.php?page=shipwright-ai",
     "preferredVersions": {
         "php": "8.0",
         "wp": "latest"
     },
+    "phpExtensionBundles": [
+        "kitchen-sink"
+    ],
     "steps": [
         {
             "step": "login",
@@ -20,6 +23,10 @@
         {
             "step": "activatePlugin",
             "pluginPath": "shipwright-ai/shipwright-ai.php"
+        },
+        {
+            "step": "runPHP",
+            "code": "<?php file_put_contents('wp-config.php', \"define('WP_DEBUG', true);\\ndefine('WP_DEBUG_LOG', true);\\ndefine('WP_DEBUG_DISPLAY', true);\", FILE_APPEND);"
         }
     ]
 }
