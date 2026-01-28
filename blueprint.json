@@ -1,5 +1,5 @@
 {
-    "landingPage": "/wp-admin/admin.php?page=shipwright-ai",
+    "landingPage": "/wp-admin/plugins.php",
     "preferredVersions": {
         "php": "8.0",
         "wp": "latest"
@@ -14,7 +14,7 @@
             "step": "installPlugin",
             "pluginZipFile": {
                 "resource": "url",
-                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.0.7/shipwright-ai.zip"
+                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.0.9/shipwright-ai.zip"
             }
         },
         {
