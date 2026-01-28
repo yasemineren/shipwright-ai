@@ -3,7 +3,11 @@ name: Build & Release Plugin
 on:
   push:
     tags:
-      - 'v*' # v1.0, v1.0.0 gibi tag'ler gelince çalışır
+      - 'v*' # v1.0.3 gibi tag gelince çalışır
+
+# 👇 İŞTE BU KISIM EKSİKTİ, BUNU EKLEMEK ZORUNDAYIZ
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -23,17 +27,16 @@ jobs:
         cd shipwright-core/admin
         npm ci
         npm run build
-        rm -rf node_modules # Gereksiz dosyaları temizle
+        rm -rf node_modules
 
     - name: Prepare Plugin ZIP
       run: |
-        # Geçici bir klasör oluştur ve dosyaları oraya taşı (Temiz yapı için)
         mkdir build_temp
         cp -r shipwright-core build_temp/shipwright-ai
         
-        # Gereksiz geliştirme dosyalarını sil
+        # Gereksiz dosyaları temizle
         cd build_temp/shipwright-ai
-        rm -rf admin/src admin/tsconfig.json admin/vite.config.ts admin/tailwind.config.js
+        rm -rf admin/src admin/tsconfig.json admin/vite.config.ts admin/tailwind.config.js admin/node_modules
         cd ..
         
         # Zip oluştur
