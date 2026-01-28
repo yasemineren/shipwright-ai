@@ -4,9 +4,6 @@
         "php": "8.0",
         "wp": "latest"
     },
-    "phpExtensionBundles": [
-        "kitchen-sink"
-    ],
     "steps": [
         {
             "step": "login",
@@ -17,16 +14,12 @@
             "step": "installPlugin",
             "pluginZipFile": {
                 "resource": "url",
-                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.0.9/shipwright-ai.zip"
+                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.0.10/shipwright-ai.zip"
             }
         },
         {
             "step": "activatePlugin",
             "pluginPath": "shipwright-ai/shipwright-ai.php"
-        },
-        {
-            "step": "runPHP",
-            "code": "<?php file_put_contents('wp-config.php', \"define('WP_DEBUG', true);\\ndefine('WP_DEBUG_LOG', true);\\ndefine('WP_DEBUG_DISPLAY', true);\", FILE_APPEND);"
         }
     ]
 }
