@@ -14,7 +14,7 @@
             "step": "installPlugin",
             "pluginZipFile": {
                 "resource": "url",
-                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.2.1/shipwright-ai.zip"
+                "url": "https://github.com/yasemineren/shipwright-ai/releases/download/v1.2.2/shipwright-ai.zip"
             }
         },
         {

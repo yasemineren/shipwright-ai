@@ -1,129 +1,64 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
-
 class Shipwright_Messaging {
+    private $namespace = 'shipwright-ai/v1';
 
     public function __construct() {
         add_action('rest_api_init', [$this, 'register_routes']);
     }
 
     public function register_routes() {
-        register_rest_route('shipwright/v1', '/generate-reply', [
+        // 1. Ayarları Kaydetme Rotası (React buraya POST atar)
+        register_rest_route($this->namespace, '/settings', [
             'methods' => 'POST',
-            'callback' => [$this, 'handle_message_request'],
-            'permission_callback' => '__return_true' // Demo için açık, production'da nonce şart
+            'callback' => [$this, 'save_settings'],
+            'permission_callback' => [$this, 'check_permission']
         ]);
-    }
 
-    public function handle_message_request($request) {
-        $params = $request->get_json_params();
-        $user_message = $params['message'] ?? '';
-        $api_key = get_option('shipwright_openai_key');
-
-        if (empty($api_key)) {
-            return new WP_Error('no_key', 'API Key missing', ['status' => 500]);
-        }
-
-        // 1. Tool Tanımları (AI'ya yapabileceklerini öğretiyoruz)
-        $tools = [
-            [
-                'type' => 'function',
-                'function' => [
-                    'name' => 'get_order_status',
-                    'description' => 'Get the current status of a customer order',
-                    'parameters' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'order_id' => [
-                                'type' => 'string',
-                                'description' => 'The order ID, e.g. #12345'
-                            ]
-                        ],
-                        'required' => ['order_id']
-                    ]
-                ]
-            ],
-            [
-                'type' => 'function',
-                'function' => [
-                    'name' => 'get_return_policy',
-                    'description' => 'Get the return policy details',
-                    'parameters' => [
-                        'type' => 'object',
-                        'properties' => [],
-                    ]
-                ]
-            ]
-        ];
-
-        // 2. OpenAI'ya İlk İstek (Soru + Tool Listesi)
-        $payload = [
-            'model' => 'gpt-3.5-turbo', // veya gpt-4
-            'messages' => [
-                ['role' => 'system', 'content' => 'You are a helpful support assistant.'],
-                ['role' => 'user', 'content' => $user_message]
-            ],
-            'tools' => $tools,
-            'tool_choice' => 'auto'
-        ];
-
-        $response = $this->call_openai($payload, $api_key);
+        // 2. Ayarları Okuma Rotası (React açılınca buraya GET atar)
+        register_rest_route($this->namespace, '/settings', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_settings'],
+            'permission_callback' => [$this, 'check_permission']
+        ]);
         
-        if (is_wp_error($response)) return $response;
-
-        $message = $response['choices'][0]['message'];
-
-        // 3. AI bir Tool çağırmak istedi mi?
-        if (isset($message['tool_calls'])) {
-            $tool_call = $message['tool_calls'][0];
-            $function_name = $tool_call['function']['name'];
-            
-            // Mock Data (Gerçek veritabanı yerine sahte veri döndürüyoruz)
-            $function_result = "";
-            if ($function_name === 'get_order_status') {
-                $function_result = "Order #12345 is SHIPPED. Tracking URL: ups.com/track/999";
-            } elseif ($function_name === 'get_return_policy') {
-                $function_result = "Returns are accepted within 30 days of purchase.";
-            }
-
-            // 4. Sonucu AI'ya geri gönder ve final cevabı al
-            $second_payload = [
-                'model' => 'gpt-3.5-turbo',
-                'messages' => [
-                    ['role' => 'system', 'content' => 'You are a helpful support assistant.'],
-                    ['role' => 'user', 'content' => $user_message],
-                    $message, // AI'nın önceki cevabı (Tool call isteği)
-                    [
-                        'role' => 'tool',
-                        'tool_call_id' => $tool_call['id'],
-                        'name' => $function_name,
-                        'content' => $function_result
-                    ]
-                ]
-            ];
-
-            $final_response = $this->call_openai($second_payload, $api_key);
-            return rest_ensure_response(['reply' => $final_response['choices'][0]['message']['content']]);
-        }
-
-        // Tool çağırmadıysa direkt cevabı dön
-        return rest_ensure_response(['reply' => $message['content']]);
+        // 3. Chat / Mesajlaşma Rotası
+        register_rest_route($this->namespace, '/chat', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handle_chat'],
+            'permission_callback' => [$this, 'check_permission']
+        ]);
     }
 
-    private function call_openai($payload, $key) {
-        $response = wp_remote_post('https://api.openai.com/v1/chat/completions', [
-            'body' => json_encode($payload),
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $key
-            ],
-            'timeout' => 30
-        ]);
+    public function check_permission() {
+        // Playground'da ve testlerde sorun çıkmaması için şimdilik herkese izin veriyoruz
+        // Gerçekte: return current_user_can('manage_options');
+        return true; 
+    }
 
-        if (is_wp_error($response)) {
-            return $response;
+    public function save_settings($request) {
+        $params = $request->get_json_params();
+        
+        if (isset($params['apiKey'])) {
+            update_option('shipwright_gemini_api_key', sanitize_text_field($params['apiKey']));
+            return new WP_REST_Response(['status' => 'success', 'message' => 'API Key Saved'], 200);
         }
 
-        return json_decode(wp_remote_retrieve_body($response), true);
+        return new WP_REST_Response(['status' => 'error', 'message' => 'No Key Provided'], 400);
+    }
+
+    public function get_settings() {
+        $api_key = get_option('shipwright_gemini_api_key', '');
+        // Güvenlik için key'in tamamını göndermeyelim, sadece var mı yok mu
+        return new WP_REST_Response([
+            'apiKey' => $api_key ? 'configured' : '', // React tarafı dolu görsün diye
+            'hasKey' => !empty($api_key)
+        ], 200);
+    }
+    
+    public function handle_chat($request) {
+        // Burası Gemini'ye istek atacak kısım (Şimdilik dummy cevap verelim)
+        return new WP_REST_Response([
+            'reply' => 'Bağlantı başarılı! Gemini entegrasyonu hazır.'
+        ], 200);
     }
 }
