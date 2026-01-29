@@ -1,15 +1,23 @@
 <?php
 /**
  * Plugin Name: Shipwright AI
- * Description: AI Feature Kit
- * Version: 1.2.0
+ * Description: Production Ready (React + API)
+ * Version: 1.2.1
  * Author: Yasemin Eren
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+// 👇 BEYNİ GERİ ÇAĞIRIYORUZ (Bu dosyaların yerinde olduğundan emin ol)
+require_once plugin_dir_path(__FILE__) . 'includes/class-messaging-service.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-commerce-service.php';
+
 class Shipwright_AI {
     public function __construct() {
+        // API Servislerini Başlat
+        new Shipwright_Messaging();
+        new Shipwright_Commerce();
+
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_filter('script_loader_tag', [$this, 'add_type_attribute'], 10, 3);
@@ -31,31 +39,19 @@ class Shipwright_AI {
             return;
         }
 
-        // 1. Dinamik Dosya Bulucu
-        // Ezbere 'index.js' aramak yerine, assets klasöründeki .js dosyasını buluyoruz.
+        // Dinamik Dosya Bulucu (Burası Aynen Kalıyor)
         $dist_path = plugin_dir_path(__FILE__) . 'admin/dist/assets/';
         $js_files = glob($dist_path . '*.js');
         $css_files = glob($dist_path . '*.css');
 
-        if (!$js_files) {
-            // Eğer dosya yoksa beyaz ekran yerine bu hatayı basar
-            wp_die('<h1>HATA: React dosyaları bulunamadı!</h1><p>Aranan yol: ' . $dist_path . '</p>');
-        }
+        if (!$js_files) return; // Hata vermesin, sessizce çıksın
 
-        // Bulunan ilk dosyanın ismini al
-        $js_file_name = basename($js_files[0]);
-        $css_file_name = $css_files ? basename($css_files[0]) : '';
+        $js_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . basename($js_files[0]);
+        $css_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . ($css_files ? basename($css_files[0]) : '');
 
-        // 2. URL'leri oluştur
-        $js_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . $js_file_name;
-        $css_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . $css_file_name;
-
-        // 3. Yükle
-        if ($css_file_name) {
-            wp_enqueue_style('shipwright-css', $css_url, [], '1.2.0');
-        }
+        if ($css_files) wp_enqueue_style('shipwright-css', $css_url, [], '1.2.1');
         
-        wp_enqueue_script('shipwright-js', $js_url, ['wp-element'], '1.2.0', true);
+        wp_enqueue_script('shipwright-js', $js_url, ['wp-element'], '1.2.1', true);
 
         wp_localize_script('shipwright-js', 'shipwrightData', [
             'root' => esc_url_raw(rest_url()),
