@@ -1,18 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // BU SATIR ÇOK ÖNEMLİ: Dosyaların yerini bulmasını sağlar (Relative Path)
-  base: './', 
+  base: '', // ÖNEMLİ: Boş bırakınca relative path çalışır
   build: {
     outDir: 'dist',
+    emptyOutDir: true,
+    manifest: true,
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
+        // Hash kullanmıyoruz ki PHP bulabilsin (yine de PHP glob ile arıyor ama garanti olsun)
+        entryFileNames: 'assets/index.js',
+        chunkFileNames: 'assets/index.js',
+        assetFileNames: 'assets/style.[ext]'
       }
     }
   }

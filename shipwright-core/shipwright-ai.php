@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Shipwright AI (Diagnostic Mode)
- * Description: Dosya yapısını kontrol eder.
- * Version: 1.1.0
+ * Plugin Name: Shipwright AI
+ * Description: AI Feature Kit
+ * Version: 1.2.0
  * Author: Yasemin Eren
  */
 
@@ -11,50 +11,61 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class Shipwright_AI {
     public function __construct() {
         add_action('admin_menu', [$this, 'add_admin_menu']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_filter('script_loader_tag', [$this, 'add_type_attribute'], 10, 3);
     }
 
     public function add_admin_menu() {
-        add_menu_page('Shipwright Debug', 'Shipwright Debug', 'manage_options', 'shipwright-ai', [$this, 'render_debug_page'], 'dashicons-search', 2);
+        add_menu_page(
+            'Shipwright AI', 'Shipwright AI', 'manage_options', 'shipwright-ai',
+            [$this, 'render_app'], 'dashicons-superhero', 2
+        );
     }
 
-    public function render_debug_page() {
-        $plugin_dir = plugin_dir_path(__FILE__);
-        // Vite config'de ayarladığımız yol:
-        $expected_js = 'admin/dist/assets/index.js'; 
-        $full_path = $plugin_dir . $expected_js;
+    public function render_app() {
+        echo '<div id="shipwright-root"></div>';
+    }
 
-        echo '<div style="background:#fff; padding:20px; border:2px solid #333; margin:20px; font-family:monospace;">';
-        echo '<h2 style="color:black;">📂 TANI MODU (DIAGNOSTIC MODE)</h2>';
-        
-        // 1. Dosya Var mı?
-        if (file_exists($full_path)) {
-            echo '<p style="color:green; font-weight:bold; font-size:18px;">✅ KRİTİK DOSYA BULUNDU: ' . $expected_js . '</p>';
-        } else {
-            echo '<p style="color:red; font-weight:bold; font-size:18px;">❌ DOSYA YOK: ' . $expected_js . '</p>';
-            echo '<p>Aranan Tam Yol: <code>' . $full_path . '</code></p>';
-            
-            // 2. Klasörde Neler Var? (Hata Ayıklama)
-            echo '<h3>📂 Ana Klasör İçeriği:</h3>';
-            echo '<pre style="background:#eee; padding:10px;">';
-            print_r(scandir($plugin_dir));
-            echo '</pre>';
-
-            // 3. Admin Klasörüne Bak
-            if (is_dir($plugin_dir . 'admin')) {
-                echo '<h3>📂 Admin Klasörü İçeriği:</h3>';
-                $admin_files = scandir($plugin_dir . 'admin');
-                print_r($admin_files);
-
-                // Dist klasörü var mı?
-                if (in_array('dist', $admin_files)) {
-                    echo '<h3>📂 Admin/Dist İçeriği:</h3>';
-                    print_r(scandir($plugin_dir . 'admin/dist'));
-                }
-            } else {
-                echo '<p style="color:red;">❌ "admin" klasörü bile kopyalanmamış!</p>';
-            }
+    public function enqueue_assets($hook) {
+        if ($hook !== 'toplevel_page_shipwright-ai') {
+            return;
         }
-        echo '</div>';
+
+        // 1. Dinamik Dosya Bulucu
+        // Ezbere 'index.js' aramak yerine, assets klasöründeki .js dosyasını buluyoruz.
+        $dist_path = plugin_dir_path(__FILE__) . 'admin/dist/assets/';
+        $js_files = glob($dist_path . '*.js');
+        $css_files = glob($dist_path . '*.css');
+
+        if (!$js_files) {
+            // Eğer dosya yoksa beyaz ekran yerine bu hatayı basar
+            wp_die('<h1>HATA: React dosyaları bulunamadı!</h1><p>Aranan yol: ' . $dist_path . '</p>');
+        }
+
+        // Bulunan ilk dosyanın ismini al
+        $js_file_name = basename($js_files[0]);
+        $css_file_name = $css_files ? basename($css_files[0]) : '';
+
+        // 2. URL'leri oluştur
+        $js_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . $js_file_name;
+        $css_url = plugin_dir_url(__FILE__) . 'admin/dist/assets/' . $css_file_name;
+
+        // 3. Yükle
+        if ($css_file_name) {
+            wp_enqueue_style('shipwright-css', $css_url, [], '1.2.0');
+        }
+        
+        wp_enqueue_script('shipwright-js', $js_url, ['wp-element'], '1.2.0', true);
+
+        wp_localize_script('shipwright-js', 'shipwrightData', [
+            'root' => esc_url_raw(rest_url()),
+            'nonce' => wp_create_nonce('wp_rest')
+        ]);
+    }
+
+    public function add_type_attribute($tag, $handle, $src) {
+        if ('shipwright-js' !== $handle) return $tag;
+        return '<script type="module" src="' . esc_url($src) . '"></script>';
     }
 }
 
